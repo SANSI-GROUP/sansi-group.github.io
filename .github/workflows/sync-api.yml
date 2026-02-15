@@ -1,0 +1,36 @@
+name: Sync API
+
+on:
+  schedule:
+    - cron: "30 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest api.json
+        run: curl -sL https://sansi-group.github.io/models.dev-1/api.json -o api.json
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet api.json 2>/dev/null; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit & push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add api.json
+          git commit -m "sync: update api.json from models.dev-1"
+          git push
